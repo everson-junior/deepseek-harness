@@ -37,7 +37,7 @@ async function fixture(
   await writeFile(join(repositoryRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
   await writeFile(join(appRoot, 'package.json'), `${JSON.stringify({ version })}\n`)
 
-  const [os, arch] = target.split('-') as ['mac' | 'win', 'arm64' | 'x64']
+  const [os, arch] = target.split('-') as ['mac' | 'win' | 'linux', 'arm64' | 'x64']
   const base = `deepseek-harness-${version}-${os}-${arch}`
   const origin = environment === 'test'
     ? TEST_ORIGIN

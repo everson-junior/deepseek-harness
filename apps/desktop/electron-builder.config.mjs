@@ -55,6 +55,7 @@ export function createElectronBuilderConfig(
   return {
     appId,
     productName: 'DeepSeek Harness',
+    executableName: 'deepseek-harness',
     artifactName: 'deepseek-harness-${version}-${os}-${arch}.${ext}',
     directories: { output: unsigned ? join(buildPaths.root, 'unsigned-artifacts') : buildPaths.artifacts },
     asar: true,
