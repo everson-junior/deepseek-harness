@@ -27,27 +27,28 @@ jobs:
     name: Build Linux AppImage
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          clean: true
 
-      - name: Configure runner-private caches
+      - name: Configure runner-private storage
         run: |
           echo "NODE_COMPILE_CACHE=${{ runner.temp }}/node-compile-cache" >> "$GITHUB_ENV"
           echo "npm_config_devdir=${{ runner.temp }}/node-gyp" >> "$GITHUB_ENV"
           echo "TMPDIR=${{ runner.temp }}" >> "$GITHUB_ENV"
 
       - uses: pnpm/action-setup@v4
-        with:
-          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
-          package-manager-cache: false
 
-      - name: Install dependencies
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq libfuse2t64 libfuse2 squashfs-tools musl-tools || sudo apt-get install -yq libfuse2 squashfs-tools musl-tools || true
+
+      - name: Install node dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Package Linux AppImage
@@ -65,21 +66,17 @@ jobs:
     name: Build Windows EXE
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
-          clean: true
 
       - uses: pnpm/action-setup@v4
-        with:
-          dest: ${{ runner.temp }}/setup-pnpm-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
-          package-manager-cache: false
 
-      - name: Install dependencies
+      - name: Install node dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Package Windows EXE (Unsigned)
