@@ -1,0 +1,5 @@
+dist/
+out/
+*.vsix
+types/
+node_modules/

@@ -1,7 +1,7 @@
-# GitHub Actions workflow to package DeepSeek Harness Desktop artifacts
-# Generates Linux AppImage and Windows EXE installers.
+# GitHub Actions workflow to package DeepSeek Harness artifacts
+# Generates Linux AppImage, Windows EXE installers, and VS Code VSIX extension.
 
-name: Desktop Artifacts (AppImage & Windows EXE)
+name: Build Artifacts (Desktop & VS Code VSIX)
 
 on:
   push:
@@ -87,5 +87,33 @@ jobs:
         with:
           name: deepseek-harness-windows-exe
           path: apps/desktop/.desktop-build/targets/win-x64/unsigned-artifacts/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  build-vscode-vsix:
+    name: Build VS Code VSIX
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+
+      - name: Install node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Package VS Code VSIX
+        run: pnpm run package:vscode
+
+      - name: Upload VS Code VSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepseek-harness-vscode-vsix
+          path: apps/vscode/*.vsix
           if-no-files-found: error
           retention-days: 14

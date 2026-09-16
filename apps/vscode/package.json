@@ -1,0 +1,214 @@
+{
+  "name": "deepseek-harness-vscode",
+  "displayName": "DeepSeek Harness",
+  "description": "Run the official DeepSeek Harness autonomous agent inside Visual Studio Code sidebar",
+  "version": "0.1.0",
+  "publisher": "deepseek-ai",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "directory": "apps/vscode"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "deepseek",
+    "harness",
+    "agent",
+    "autonomous",
+    "ai assistant",
+    "reasoner",
+    "r1",
+    "v3"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "deepseek-harness-sidebar",
+          "title": "DeepSeek Harness",
+          "icon": "media/deepseek.svg"
+        }
+      ]
+    },
+    "views": {
+      "deepseek-harness-sidebar": [
+        {
+          "id": "deepseek.harnessView",
+          "name": "DeepSeek Harness",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "deepseek.startHarness",
+        "title": "Start Harness",
+        "category": "DeepSeek Harness",
+        "icon": "$(play)"
+      },
+      {
+        "command": "deepseek.stopHarness",
+        "title": "Stop Harness",
+        "category": "DeepSeek Harness",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "deepseek.restartHarness",
+        "title": "Restart Harness",
+        "category": "DeepSeek Harness",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "deepseek.openFullView",
+        "title": "Open in Editor Tab",
+        "category": "DeepSeek Harness",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "deepseek.focusHarness",
+        "title": "Open DeepSeek Harness Chat",
+        "category": "DeepSeek Harness",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "deepseek.moveToRightSidebar",
+        "title": "Move to Right Sidebar",
+        "category": "DeepSeek Harness",
+        "icon": "$(layout-sidebar-right)"
+      },
+      {
+        "command": "deepseek.openInBrowser",
+        "title": "Open in External Browser",
+        "category": "DeepSeek Harness",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "deepseek.showLogs",
+        "title": "Show Harness Logs",
+        "category": "DeepSeek Harness",
+        "icon": "$(output)"
+      },
+      {
+        "command": "deepseek.installHarness",
+        "title": "Install DeepSeek Harness",
+        "category": "DeepSeek Harness",
+        "icon": "$(cloud-download)"
+      },
+      {
+        "command": "deepseek.checkHarness",
+        "title": "Check DeepSeek Harness Installation",
+        "category": "DeepSeek Harness",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "deepseek.openSettings",
+        "title": "Configure Settings",
+        "category": "DeepSeek Harness",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "deepseek.startHarness",
+          "when": "view == deepseek.harnessView && !deepseek.isRunning",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deepseek.stopHarness",
+          "when": "view == deepseek.harnessView && deepseek.isRunning",
+          "group": "navigation@1"
+        },
+        {
+          "command": "deepseek.restartHarness",
+          "when": "view == deepseek.harnessView && deepseek.isRunning",
+          "group": "navigation@2"
+        },
+        {
+          "command": "deepseek.openFullView",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "deepseek.showLogs",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@4"
+        },
+        {
+          "command": "deepseek.moveToRightSidebar",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@5"
+        },
+        {
+          "command": "deepseek.openInBrowser",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@6"
+        },
+        {
+          "command": "deepseek.openSettings",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@7"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DeepSeek Harness",
+      "properties": {
+        "deepseek.dshPath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom command or path to dsh (e.g. 'dsh', 'pnpm dsh', or '/path/to/bin.ts'). If empty, auto-detects from workspace or PATH."
+        },
+        "deepseek.port": {
+          "type": "number",
+          "default": 0,
+          "description": "Port for DeepSeek Harness Web server (0 for auto-assigned random port)."
+        },
+        "deepseek.profile": {
+          "type": "string",
+          "default": "web",
+          "description": "DSH profile to run (e.g. 'web')."
+        },
+        "deepseek.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically start the DeepSeek Harness runtime when VS Code opens or the view is revealed."
+        },
+        "deepseek.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "DeepSeek API Key. If blank, reads DEEPSEEK_API_KEY from environment or .env."
+        },
+        "deepseek.baseUrl": {
+          "type": "string",
+          "default": "https://api.deepseek.com",
+          "description": "DeepSeek API Base URL."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs",
+    "test": "node --test tests/*.spec.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}
