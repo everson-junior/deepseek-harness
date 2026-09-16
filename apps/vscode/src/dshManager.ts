@@ -1,17 +1,45 @@
-import { ChildProcess, spawn } from 'node:child_process'
+import { ChildProcess, execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import http, { Server, RequestOptions, IncomingMessage, ServerResponse, OutgoingHttpHeaders } from 'node:http'
 import { Duplex } from 'node:stream'
 import { homedir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join } from 'node:path'
 import * as vscode from 'vscode'
 import { ExtensionConfig, HarnessInfo, HarnessStatus } from './types.ts'
+
+function spawnExecutable(
+  command: string,
+  args: string[],
+  options: Parameters<typeof spawn>[2],
+): ChildProcess {
+  if (process.platform === 'win32' && command.toLowerCase().endsWith('.cmd')) {
+    return spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', command, ...args], options)
+  }
+  return spawn(command, args, options)
+}
 
 /**
  * Finds the real Node.js binary on the system (avoiding process.execPath which is the VS Code / Antigravity binary).
  */
 export function findNodeBinary(): string {
   const home = homedir()
+
+  if (process.platform === 'win32') {
+    try {
+      const pathNode = execFileSync('where.exe', ['node.exe'], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .split(/\r?\n/)
+        .map(candidate => candidate.trim())
+        .find(candidate => candidate.length > 0)
+      if (pathNode) {
+        return pathNode
+      }
+    } catch {
+      // Continue with the standard Windows locations.
+    }
+  }
 
   // 1. Check NVM installations (prefer newest version)
   const nvmDir = join(home, '.nvm/versions/node')
@@ -32,13 +60,20 @@ export function findNodeBinary(): string {
   }
 
   // 2. Check standard system locations
-  const candidates = [
-    '/usr/bin/node',
-    '/usr/local/bin/node',
-    join(home, '.local/share/pnpm/node'),
-    join(home, '.local/bin/node'),
-    '/bin/node',
-  ]
+  const candidates = process.platform === 'win32'
+    ? [
+      join(process.env.ProgramFiles ?? 'C:\\Program Files', 'nodejs', 'node.exe'),
+      join(process.env.ProgramW6432 ?? 'C:\\Program Files', 'nodejs', 'node.exe'),
+      join(process.env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), 'Programs', 'nodejs', 'node.exe'),
+      join(process.env.APPDATA ?? join(home, 'AppData', 'Roaming'), 'npm', 'node.exe'),
+    ]
+    : [
+      '/usr/bin/node',
+      '/usr/local/bin/node',
+      join(home, '.local/share/pnpm/node'),
+      join(home, '.local/bin/node'),
+      '/bin/node',
+    ]
 
   for (const c of candidates) {
     if (existsSync(c)) {
@@ -135,7 +170,6 @@ function resolveEnhancedEnv(userConfig: ExtensionConfig): NodeJS.ProcessEnv {
  */
 export function resolveHarnessCommand(
   config: ExtensionConfig,
-  workspaceRoot?: string,
   storageRoot?: string,
 ): { command: string; args: string[] } {
   const profileArgs = ['--profile', config.profile || 'web', '--no-open']
@@ -145,8 +179,8 @@ export function resolveHarnessCommand(
 
   // 1. Explicit user path configured
   if (config.dshPath && config.dshPath.trim() !== '') {
-    const parts = config.dshPath.trim().split(/\s+/)
-    const command = parts[0]
+    const parts = config.dshPath.trim().match(/(?:[^\s"]+|"[^"]*")+/g) ?? []
+    const command = parts[0]?.replace(/^"|"$/g, '') ?? ''
     const extraArgs = parts.slice(1)
     return {
       command,
@@ -168,41 +202,7 @@ export function resolveHarnessCommand(
     }
   }
 
-  // 3. Locate DeepSeek Harness in workspace or parent directories
-  const candidateRoots = [
-    workspaceRoot,
-    workspaceRoot ? resolve(workspaceRoot, '..') : undefined,
-    workspaceRoot ? resolve(workspaceRoot, '../..') : undefined,
-  ].filter((r): r is string => typeof r === 'string' && existsSync(r))
-
-  for (const root of candidateRoots) {
-    // Compiled version: apps/cli/lib/bin.js (runs with pure Node, fastest & no loaders)
-    const compiledBinJs = resolve(root, 'apps/cli/lib/bin.js')
-    if (existsSync(compiledBinJs)) {
-      return {
-        command: nodeBin,
-        args: [compiledBinJs, ...profileArgs],
-      }
-    }
-
-    // Source version: apps/cli/src/bin.ts with tsx loader
-    const sourceBinTs = resolve(root, 'apps/cli/src/bin.ts')
-    if (existsSync(sourceBinTs)) {
-      const tsxLoader = resolve(root, 'node_modules/tsx/dist/esm/index.mjs')
-      if (existsSync(tsxLoader)) {
-        return {
-          command: nodeBin,
-          args: ['--import', tsxLoader, sourceBinTs, ...profileArgs],
-        }
-      }
-      return {
-        command: nodeBin,
-        args: ['--import', 'tsx/esm', sourceBinTs, ...profileArgs],
-      }
-    }
-  }
-
-  // 4. Check global dsh binary in nodeBin directory
+  // 3. Check global dsh binary in nodeBin directory
   if (nodeBin !== 'node') {
     const isWin = process.platform === 'win32'
     const directCandidate = join(dirname(nodeBin), isWin ? 'dsh.cmd' : 'dsh')
@@ -214,7 +214,7 @@ export function resolveHarnessCommand(
     }
   }
 
-  // 5. Fallback to global `dsh` CLI command
+  // 4. Fallback to global `dsh` CLI command
   return {
     command: process.platform === 'win32' ? 'dsh.cmd' : 'dsh',
     args: profileArgs,
@@ -222,11 +222,10 @@ export function resolveHarnessCommand(
 }
 
 /**
- * Checks if DeepSeek Harness command or repository is available on this system.
+ * Checks if an installed DeepSeek Harness command is available on this system.
  */
 export async function checkDshAvailable(
   config: ExtensionConfig,
-  workspaceRoot?: string,
   storageRoot?: string,
 ): Promise<boolean> {
   // 1. Check explicit config
@@ -249,27 +248,11 @@ export async function checkDshAvailable(
     if (existsSync(directCandidate)) return true
   }
 
-  // 4. Check workspace monorepo
-  const candidateRoots = [
-    workspaceRoot,
-    workspaceRoot ? resolve(workspaceRoot, '..') : undefined,
-    workspaceRoot ? resolve(workspaceRoot, '../..') : undefined,
-  ].filter((r): r is string => typeof r === 'string' && existsSync(r))
-
-  for (const root of candidateRoots) {
-    if (
-      existsSync(resolve(root, 'apps/cli/lib/bin.js')) ||
-      existsSync(resolve(root, 'apps/cli/src/bin.ts'))
-    ) {
-      return true
-    }
-  }
-
-  // 5. Check system PATH via `dsh --version`
+  // 4. Check system PATH via `dsh --version`
   return new Promise<boolean>((res) => {
     const env = resolveEnhancedEnv(config)
     const cmd = process.platform === 'win32' ? 'dsh.cmd' : 'dsh'
-    const child = spawn(cmd, ['--version'], { env, stdio: 'ignore' })
+    const child = spawnExecutable(cmd, ['--version'], { env, stdio: 'ignore' })
     child.on('error', () => res(false))
     child.on('close', code => res(code === 0))
   })
@@ -463,11 +446,7 @@ export class DshProcessManager {
   }
 
   public async isAvailable(): Promise<boolean> {
-    const workspaceFolders = vscode.workspace.workspaceFolders
-    const cwd = workspaceFolders && workspaceFolders.length > 0
-      ? workspaceFolders[0].uri.fsPath
-      : process.cwd()
-    return checkDshAvailable(this.config, cwd, this.storageRoot)
+    return checkDshAvailable(this.config, this.storageRoot)
   }
 
   public get info(): HarnessInfo {
@@ -506,13 +485,13 @@ export class DshProcessManager {
     const tryGlobal = (): Promise<boolean> => {
       return new Promise<boolean>((res) => {
         this.outputChannel.appendLine(`[DeepSeek Harness] Executing: ${npmBin} install -g @deepseek-ai/dsh`)
-        const child = spawn(npmBin, ['install', '-g', '@deepseek-ai/dsh'], {
+        const child = spawnExecutable(npmBin, ['install', '-g', '@deepseek-ai/dsh'], {
           env,
           stdio: ['ignore', 'pipe', 'pipe'],
         })
 
-        child.stdout.on('data', d => this.outputChannel.append(d.toString()))
-        child.stderr.on('data', d => this.outputChannel.append(d.toString()))
+        child.stdout?.on('data', d => this.outputChannel.append(d.toString()))
+        child.stderr?.on('data', d => this.outputChannel.append(d.toString()))
 
         child.on('close', (code) => {
           if (code === 0) {
@@ -537,13 +516,13 @@ export class DshProcessManager {
         } catch {}
 
         this.outputChannel.appendLine(`[DeepSeek Harness] Executing: ${npmBin} install @deepseek-ai/dsh --prefix ${storagePath}`)
-        const child = spawn(npmBin, ['install', '@deepseek-ai/dsh', '--prefix', storagePath], {
+        const child = spawnExecutable(npmBin, ['install', '@deepseek-ai/dsh', '--prefix', storagePath], {
           env,
           stdio: ['ignore', 'pipe', 'pipe'],
         })
 
-        child.stdout.on('data', d => this.outputChannel.append(d.toString()))
-        child.stderr.on('data', d => this.outputChannel.append(d.toString()))
+        child.stdout?.on('data', d => this.outputChannel.append(d.toString()))
+        child.stderr?.on('data', d => this.outputChannel.append(d.toString()))
 
         child.on('close', (code) => {
           if (code === 0) {
@@ -614,7 +593,7 @@ export class DshProcessManager {
       ? workspaceFolders[0].uri.fsPath
       : process.cwd()
 
-    const { command, args } = resolveHarnessCommand(this.config, cwd, this.storageRoot)
+    const { command, args } = resolveHarnessCommand(this.config, this.storageRoot)
     const env = resolveEnhancedEnv(this.config)
 
     this.outputChannel.appendLine('=========================================')
@@ -638,7 +617,7 @@ export class DshProcessManager {
       }, 35000)
 
       try {
-        const child = spawn(command, args, {
+        const child = spawnExecutable(command, args, {
           cwd,
           env,
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -704,8 +683,8 @@ export class DshProcessManager {
           }
         }
 
-        child.stdout.on('data', handleData)
-        child.stderr.on('data', handleData)
+        child.stdout?.on('data', handleData)
+        child.stderr?.on('data', handleData)
 
         child.on('error', (err: Error) => {
           this.outputChannel.appendLine(`[DeepSeek Harness] Process spawn error: ${err.message}`)

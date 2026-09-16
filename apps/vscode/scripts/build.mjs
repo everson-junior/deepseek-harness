@@ -7,10 +7,27 @@ import { fileURLToPath } from 'node:url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appRoot = resolve(__dirname, '..')
 const repoRoot = resolve(appRoot, '../..')
+const binSuffix = process.platform === 'win32' ? '.cmd' : ''
+
+function runExecutable(file, args, options) {
+  if (process.platform === 'win32' && file.endsWith('.cmd')) {
+    execFileSync(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', file, ...args], options)
+    return
+  }
+  execFileSync(file, args, options)
+}
+
+function runEsbuild(file, args, options) {
+  if (process.platform === 'win32' && !file.endsWith('.cmd')) {
+    execFileSync(process.execPath, [file, ...args], options)
+    return
+  }
+  runExecutable(file, args, options)
+}
 
 console.log('1. Typechecking apps/vscode...')
-const tscBin = resolve(repoRoot, 'node_modules/.bin/tsc')
-execFileSync(tscBin, ['-p', join(appRoot, 'tsconfig.json')], {
+const tscBin = resolve(repoRoot, 'node_modules/.bin', `tsc${binSuffix}`)
+runExecutable(tscBin, ['-p', join(appRoot, 'tsconfig.json')], {
   cwd: repoRoot,
   stdio: 'inherit',
 })
@@ -27,7 +44,7 @@ function findEsbuildBin() {
       }
     }
   }
-  const directBin = resolve(repoRoot, 'node_modules/.bin/esbuild')
+  const directBin = resolve(repoRoot, 'node_modules/.bin', `esbuild${binSuffix}`)
   if (existsSync(directBin)) return directBin
   throw new Error('esbuild binary not found in workspace')
 }
@@ -38,7 +55,7 @@ console.log('3. Bundling extension with esbuild...')
 const entryPoint = join(appRoot, 'src/extension.ts')
 const outfile = join(appRoot, 'dist/extension.cjs')
 
-execFileSync(
+runEsbuild(
   esbuildBin,
   [
     entryPoint,

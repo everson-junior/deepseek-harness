@@ -37,4 +37,27 @@ describe('DeepSeek Harness VS Code Extension - Command Resolution', () => {
     const npmCmd = 'npm install -g @deepseek-ai/dsh'
     assert.strictEqual(npmCmd, 'npm install -g @deepseek-ai/dsh')
   })
+
+  it('preserves quoted Windows executable paths when parsing configuration', () => {
+    const configured = '"C:\\Program Files\\nodejs\\dsh.cmd" --verbose'
+    const parts = configured.match(/(?:[^\s"]+|"[^"]*")+/g) ?? []
+    assert.deepStrictEqual(
+      [parts[0]?.replace(/^"|"$/g, ''), ...parts.slice(1)],
+      ['C:\\Program Files\\nodejs\\dsh.cmd', '--verbose'],
+    )
+  })
+
+  it('converts Windows loader paths to file URLs for Node ESM', () => {
+    const loaderPath = 'C:\\engenharia\\deepseek-harness\\node_modules\\tsx\\dist\\esm\\index.mjs'
+    assert.strictEqual(
+      new URL(`file://${loaderPath.replaceAll('\\\\', '/')}`).href,
+      'file:///C:/engenharia/deepseek-harness/node_modules/tsx/dist/esm/index.mjs',
+    )
+  })
+
+  it('does not treat a workspace source checkout as an installed dsh command', () => {
+    const sourceCheckout = 'C:\\engenharia\\deepseek-harness\\apps\\cli\\src\\bin.ts'
+    const installedCommands = []
+    assert.strictEqual(installedCommands.includes(sourceCheckout), false)
+  })
 })

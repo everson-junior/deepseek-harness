@@ -28,7 +28,7 @@ Instead of a standalone chat mock, this extension launches and manages the authe
   - Live stdout/stderr logs from the Harness process available under the `DeepSeek Harness` output channel.
 
 ### 3. Flexible Launch Modes
-- Auto-detects `dsh` from your system `PATH` or monorepo development checkout.
+- Detects an installed `dsh` command from your system `PATH` or the extension's private storage.
 - Configurable custom command/path (e.g. `pnpm dsh`).
 - Configurable port and startup flags.
 
