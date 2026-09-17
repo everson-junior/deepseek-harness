@@ -229,8 +229,4 @@ export const ptBR = {
   'settings.transcript.description': 'Controla o conteúdo do processo nas conversas concluídas',
   'settings.transcript.normal': 'Normal',
   'settings.transcript.compact': 'Compacto',
-  'settings.enter.title': 'Comportamento de envio enquanto ocupado',
-  'settings.enter.description': 'Define o que Enter e o botão Enviar fazem enquanto o agente está executando; Cmd/Ctrl+Enter usa o outro comportamento',
-  'settings.enter.queue': 'Fila',
-  'settings.enter.steer': 'Orientar',
 } satisfies Record<ChatKey, string>
