@@ -72,6 +72,12 @@
         "icon": "$(debug-restart)"
       },
       {
+        "command": "deepseek.debugHarness",
+        "title": "Debug Harness in Project...",
+        "category": "DeepSeek Harness",
+        "icon": "$(debug-alt)"
+      },
+      {
         "command": "deepseek.openFullView",
         "title": "Open in Editor Tab",
         "category": "DeepSeek Harness",
@@ -138,6 +144,11 @@
           "group": "navigation@2"
         },
         {
+          "command": "deepseek.debugHarness",
+          "when": "view == deepseek.harnessView",
+          "group": "navigation@2"
+        },
+        {
           "command": "deepseek.openFullView",
           "when": "view == deepseek.harnessView",
           "group": "navigation@3"
@@ -172,6 +183,11 @@
           "default": "",
           "description": "Custom command or path to dsh (e.g. 'dsh', 'pnpm dsh', or '/path/to/bin.ts'). If empty, auto-detects from workspace or PATH."
         },
+        "deepseek.projectPath": {
+          "type": "string",
+          "default": "",
+          "description": "Project directory used as the working directory when DeepSeek Harness starts. Empty uses the first open workspace folder."
+        },
         "deepseek.port": {
           "type": "number",
           "default": 0,
@@ -184,7 +200,7 @@
         },
         "deepseek.autoStart": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Automatically start the DeepSeek Harness runtime when VS Code opens or the view is revealed."
         },
         "deepseek.apiKey": {

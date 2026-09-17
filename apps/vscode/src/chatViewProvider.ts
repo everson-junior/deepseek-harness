@@ -479,10 +479,6 @@ export class DeepSeekHarnessViewProvider implements vscode.WebviewViewProvider {
     void this.dshManager.initStatus().then(() => {
       this.updateWebviewContent(this.dshManager.info)
 
-      // Auto-start only after confirming an installed global or private CLI.
-      if (this.config.autoStart && this.dshManager.info.status === 'stopped') {
-        void vscode.commands.executeCommand('deepseek.startHarness')
-      }
     })
   }
 

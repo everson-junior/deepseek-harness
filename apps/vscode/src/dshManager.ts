@@ -1,4 +1,4 @@
-import { ChildProcess, execFileSync, spawn } from 'node:child_process'
+import { ChildProcess, execFile, execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import http, { Server, RequestOptions, IncomingMessage, ServerResponse, OutgoingHttpHeaders } from 'node:http'
 import { Duplex } from 'node:stream'
@@ -16,6 +16,20 @@ function spawnExecutable(
     return spawn(process.env.ComSpec ?? 'cmd.exe', ['/d', '/s', '/c', command, ...args], options)
   }
   return spawn(command, args, options)
+}
+
+/**
+ * Transfers a successfully upgraded WebSocket connection in both directions.
+ */
+export function bridgeWebSocket(
+  clientSocket: Duplex,
+  serverSocket: Duplex,
+  clientHead: Buffer,
+  serverHead: Buffer,
+): void {
+  if (serverHead.length > 0) clientSocket.write(serverHead)
+  if (clientHead.length > 0) serverSocket.write(clientHead)
+  clientSocket.pipe(serverSocket).pipe(clientSocket)
 }
 
 /**
@@ -97,6 +111,53 @@ export function findNpmBinary(): string {
     }
   }
   return process.platform === 'win32' ? 'npm.cmd' : 'npm'
+}
+
+function findProcessIdOnPort(port: number): Promise<number | undefined> {
+  if (port <= 0) return Promise.resolve(undefined)
+  return new Promise((resolvePort) => {
+    const command = process.platform === 'win32' ? 'netstat.exe' : 'lsof'
+    const args = process.platform === 'win32'
+      ? ['-ano']
+      : ['-ti', `tcp:${port}`]
+    execFile(command, args, { encoding: 'utf8' }, (_error, stdout) => {
+      const lines = stdout.split(/\r?\n/)
+      if (process.platform === 'win32') {
+        const match = lines.find(line =>
+          new RegExp(`127\\.0\\.0\\.1:${port}\\s+.*LISTENING`, 'i').test(line) ||
+          new RegExp(`0\\.0\\.0\\.0:${port}\\s+.*LISTENING`, 'i').test(line),
+        )
+        const pid = match?.trim().split(/\s+/).at(-1)
+        resolvePort(pid ? Number(pid) : undefined)
+        return
+      }
+      const pid = lines.map(line => Number(line.trim())).find(value => Number.isInteger(value) && value > 0)
+      resolvePort(pid)
+    })
+  })
+}
+
+async function stopProcessOnPort(
+  port: number,
+  outputChannel: vscode.OutputChannel,
+  excludedPid?: number,
+): Promise<void> {
+  const pid = await findProcessIdOnPort(port)
+  if (!pid || pid === excludedPid) return
+
+  outputChannel.appendLine(`[DeepSeek Harness] Stopping process ${pid} listening on port ${port}...`)
+  await new Promise<void>((resolveStop) => {
+    if (process.platform === 'win32') {
+      execFile('taskkill.exe', ['/PID', String(pid), '/T', '/F'], () => resolveStop())
+    } else {
+      try {
+        process.kill(pid, 'SIGTERM')
+      } catch {
+        // Process may have exited between discovery and termination.
+      }
+      resolveStop()
+    }
+  })
 }
 
 /**
@@ -222,6 +283,25 @@ export function resolveHarnessCommand(
 }
 
 /**
+ * Resolves the source CLI command for a selected DeepSeek Harness checkout.
+ */
+export function resolveWorkspaceSourceCommand(
+  projectPath: string,
+  config: ExtensionConfig,
+): { command: string; args: string[] } {
+  const sourceBin = join(projectPath, 'apps', 'cli', 'src', 'bin.ts')
+  if (!existsSync(sourceBin)) {
+    throw new Error(`The selected folder is not a DeepSeek Harness source checkout: ${sourceBin}`)
+  }
+
+  const args = ['--import', 'tsx/esm', sourceBin, '--profile', config.profile || 'web', '--no-open']
+  if (config.port > 0) {
+    args.push('--port', String(config.port))
+  }
+  return { command: findNodeBinary(), args }
+}
+
+/**
  * Checks if an installed DeepSeek Harness command is available on this system.
  */
 export async function checkDshAvailable(
@@ -343,7 +423,7 @@ function createIframeProxy(
     })
 
     // Forward WebSocket / HTTP upgrade requests
-    server.on('upgrade', (req: IncomingMessage, clientSocket: Duplex) => {
+    server.on('upgrade', (req: IncomingMessage, clientSocket: Duplex, clientHead: Buffer) => {
       const existingCookie = req.headers.cookie ?? ''
       const forwardCookie = currentCookie
         ? existingCookie
@@ -375,7 +455,7 @@ function createIframeProxy(
         headers: forwardHeaders,
       })
 
-      proxyReq.on('upgrade', (proxyRes: IncomingMessage, serverSocket: Duplex) => {
+      proxyReq.on('upgrade', (proxyRes: IncomingMessage, serverSocket: Duplex, serverHead: Buffer) => {
         clientSocket.write(
           'HTTP/1.1 101 Switching Protocols\r\n' +
             Object.entries(proxyRes.headers)
@@ -383,7 +463,7 @@ function createIframeProxy(
               .join('\r\n') +
             '\r\n\r\n',
         )
-        serverSocket.pipe(clientSocket).pipe(serverSocket)
+        bridgeWebSocket(clientSocket, serverSocket, clientHead, serverHead)
       })
 
       proxyReq.on('error', () => {
@@ -421,6 +501,7 @@ export class DshProcessManager {
   private childProcess: ChildProcess | null = null
   private proxyServer: Server | null = null
   private currentInfo: HarnessInfo = { status: 'stopped' }
+  private backendPort?: number
   private isStopping = false
   private storageRoot?: string
 
@@ -567,6 +648,23 @@ export class DshProcessManager {
       throw new Error('DeepSeek Harness is not installed. Please click "Instalar DeepSeek Harness" in the sidebar.')
     }
 
+    const workspaceFolders = vscode.workspace.workspaceFolders
+    const { command, args } = resolveHarnessCommand(this.config, this.storageRoot)
+    const cwd = workspaceFolders && workspaceFolders.length > 0
+      ? workspaceFolders[0].uri.fsPath
+      : process.cwd()
+    return this.startProcess(command, args, cwd)
+  }
+
+  /**
+   * Start the selected repository's source CLI for development and provider debugging.
+   */
+  public async startFromWorkspaceSource(projectPath: string): Promise<string> {
+    const { command, args } = resolveWorkspaceSourceCommand(projectPath, this.config)
+    return this.startProcess(command, args, projectPath)
+  }
+
+  private async startProcess(command: string, args: string[], cwd: string): Promise<string> {
     if (this.currentInfo.status === 'running' && this.currentInfo.url) {
       return this.currentInfo.url
     }
@@ -587,13 +685,6 @@ export class DshProcessManager {
 
     this.isStopping = false
     this.setStatus('starting', { url: undefined, port: undefined, error: undefined, pid: undefined })
-
-    const workspaceFolders = vscode.workspace.workspaceFolders
-    const cwd = workspaceFolders && workspaceFolders.length > 0
-      ? workspaceFolders[0].uri.fsPath
-      : process.cwd()
-
-    const { command, args } = resolveHarnessCommand(this.config, this.storageRoot)
     const env = resolveEnhancedEnv(this.config)
 
     this.outputChannel.appendLine('=========================================')
@@ -670,6 +761,7 @@ export class DshProcessManager {
               this.proxyServer = server
 
               const webviewUrl = `http://127.0.0.1:${proxyPort}/`
+              this.backendPort = dshPort
               this.setStatus('running', { url: webviewUrl, port: dshPort, pid: child.pid })
               this.outputChannel.appendLine(`[DeepSeek Harness] Backend ready at: ${rawDshUrl}`)
               this.outputChannel.appendLine(`[DeepSeek Harness] Webview sidebar ready at: ${webviewUrl}`)
@@ -677,6 +769,7 @@ export class DshProcessManager {
             } catch (proxyErr: unknown) {
               const msg = proxyErr instanceof Error ? proxyErr.message : String(proxyErr)
               this.outputChannel.appendLine(`[DeepSeek Harness] Proxy start failed: ${msg}. Using raw URL.`)
+              this.backendPort = dshPort
               this.setStatus('running', { url: rawDshUrl, port: dshPort, pid: child.pid })
               resolve(rawDshUrl)
             }
@@ -744,8 +837,11 @@ export class DshProcessManager {
    */
   public async stop(): Promise<void> {
     this.closeProxy()
+    const backendPort = this.backendPort ?? this.currentInfo.port ?? this.config.port
+    this.backendPort = undefined
 
     if (!this.childProcess) {
+      await stopProcessOnPort(backendPort, this.outputChannel)
       this.setStatus('stopped', { url: undefined, port: undefined, pid: undefined })
       return
     }
@@ -754,7 +850,7 @@ export class DshProcessManager {
     this.outputChannel.appendLine('[DeepSeek Harness] Stopping process...')
 
     const child = this.childProcess
-    return new Promise<void>((resolve) => {
+    await new Promise<void>((resolve) => {
       let resolved = false
       const timeout = setTimeout(() => {
         if (!resolved && this.childProcess) {
@@ -791,6 +887,8 @@ export class DshProcessManager {
         resolve()
       }
     })
+
+    await stopProcessOnPort(backendPort, this.outputChannel)
   }
 
   public async restart(): Promise<string> {

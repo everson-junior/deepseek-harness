@@ -25,6 +25,7 @@ export interface HarnessInfo {
  */
 export interface ExtensionConfig {
   dshPath: string
+  projectPath: string
   port: number
   profile: string
   autoStart: boolean

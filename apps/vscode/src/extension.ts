@@ -16,9 +16,10 @@ function resolveConfig(): ExtensionConfig {
 
   return {
     dshPath: wsConfig.get<string>('dshPath', ''),
+    projectPath: wsConfig.get<string>('projectPath', ''),
     port: wsConfig.get<number>('port', 0),
     profile: wsConfig.get<string>('profile', 'web'),
-    autoStart: wsConfig.get<boolean>('autoStart', true),
+    autoStart: wsConfig.get<boolean>('autoStart', false),
     apiKey: apiKeySetting || envApiKey,
     baseUrl: envBaseUrl || baseUrlSetting,
   }
@@ -166,6 +167,32 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('deepseek.stopHarness', async () => {
       await dshManager.stop()
       vscode.window.showInformationMessage('DeepSeek Harness stopped.')
+    }),
+
+    vscode.commands.registerCommand('deepseek.debugHarness', async () => {
+      const selected = await vscode.window.showOpenDialog({
+        canSelectFiles: false,
+        canSelectFolders: true,
+        canSelectMany: false,
+        openLabel: 'Use Project for Debug',
+        title: 'Select the project directory for DeepSeek Harness',
+      })
+      const project = selected?.[0]
+      if (!project) return
+
+      await vscode.workspace.getConfiguration('deepseek').update(
+        'projectPath',
+        project.fsPath,
+        vscode.ConfigurationTarget.Workspace,
+      )
+      await dshManager.stop()
+      try {
+        await dshManager.startFromWorkspaceSource(project.fsPath)
+        await vscode.commands.executeCommand('deepseek.harnessView.focus')
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        vscode.window.showErrorMessage(`Failed to start DeepSeek Harness in debug project: ${msg}`)
+      }
     }),
 
     vscode.commands.registerCommand('deepseek.restartHarness', async () => {
