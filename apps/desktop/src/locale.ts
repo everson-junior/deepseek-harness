@@ -1,4 +1,4 @@
-/** Typed English and Chinese copy owned by the Electron shell. */
+/** Typed English, Chinese, and Brazilian Portuguese copy owned by the Electron shell. */
 
 export const en = {
   application: 'Application',
@@ -105,14 +105,56 @@ export const zh = {
   loadingPlugins: '正在读取桌面插件…',
 } as const satisfies DesktopMessages
 
+/** Brazilian Portuguese shell copy, with English fallback for untranslated detail. */
+export const ptBR: DesktopMessages = {
+  ...en,
+  application: 'Aplicativo',
+  startupFailed: 'O DeepSeek Harness não conseguiu iniciar',
+  startupLoading: 'Iniciando o DeepSeek Harness…',
+  startupLoadingDescription: 'Seu workspace será aberto quando estiver pronto.',
+  restartApplication: 'Fechar e reiniciar',
+  resetConfiguration: 'Redefinir o Desktop e tentar novamente',
+  disableThirdPartyPlugins: 'Desativar todos os plugins de terceiros e tentar novamente',
+  pluginsMenu: 'Plugins do Desktop…',
+  pluginsMenuPackagedOnly: 'Plugins do Desktop… (disponível em aplicativos empacotados)',
+  checkUpdatesMenu: 'Verificar atualizações…',
+  updateCheckFailedTitle: 'Falha ao verificar atualizações',
+  unknownError: 'Erro desconhecido',
+  updateCheckTitle: 'Verificar atualizações',
+  updateCurrent: 'Você já tem a versão mais recente.',
+  updateAvailable: 'Uma atualização está disponível',
+  installAndRestart: 'Instalar e reiniciar',
+  later: 'Mais tarde',
+  updateFailedTitle: 'Falha na atualizacao',
+  pluginManagerTitle: 'Plugins do Desktop',
+  pluginWindowTitle: 'DeepSeek Harness — Plugins do Desktop',
+  refresh: 'Atualizar',
+  enable: 'Ativar',
+  disable: 'Desativar',
+  disabled: 'Desativado',
+  retry: 'Tentar iniciar novamente',
+  disableAll: 'Desativar todos os plugins e tentar novamente',
+  npmPackage: 'pacote npm',
+  install: 'Instalar',
+  installed: 'Instalado',
+  noPlugins: 'Nenhum plugin do Desktop está instalado.',
+  remove: 'Remover',
+  update: 'Atualizar',
+  operationComplete: 'Concluido. O backend do Desktop foi reiniciado.',
+  refreshing: 'Atualizando…',
+  refreshed: 'Lista de plugins atualizada.',
+  loadingPlugins: 'Lendo plugins do Desktop…',
+}
+
 /** Locale payload exposed to the Desktop-owned renderer. */
 export interface DesktopLocale {
-  readonly id: 'en' | 'zh-CN'
+  readonly id: 'en' | 'zh-CN' | 'pt-BR'
   readonly messages: DesktopMessages
 }
 
 /** Resolve Electron's locale to one shipped Desktop dictionary. */
 export function resolveDesktopLocale(locale: string): DesktopLocale {
+  if (locale.toLowerCase().startsWith('pt')) return { id: 'pt-BR', messages: ptBR }
   return locale.toLowerCase().startsWith('zh')
     ? { id: 'zh-CN', messages: zh }
     : { id: 'en', messages: en }

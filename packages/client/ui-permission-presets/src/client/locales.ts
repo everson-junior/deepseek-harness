@@ -35,6 +35,22 @@ export const en = {
   'confirm.enable': 'Enable Full access',
 } satisfies Record<PermissionSettingsKey, string>
 
+/** Brazilian Portuguese dictionary for the default permission row. */
+export const ptBR = {
+  ...en,
+  'title': 'Permissão',
+  'description': 'Escolha o modo de permissão padrão para novas sessões',
+  'loading': 'Carregando',
+  'unavailable': 'Indisponível',
+  'preset.readOnly': 'Somente leitura',
+  'preset.workspaceWrite': 'Gravação no workspace',
+  'preset.fullAccess': 'Acesso total',
+  'confirm.title': 'Ativar acesso total?',
+  'confirm.acknowledge': 'Entendo os riscos e quero continuar',
+  'confirm.cancel': 'Cancelar',
+  'confirm.enable': 'Ativar acesso total',
+} satisfies Record<PermissionSettingsKey, string>
+
 /** Simplified Chinese dictionary for the current-session popup gate. */
 export const accessZh = {
   'preset.readOnly': '仅可查看',
@@ -60,4 +76,16 @@ export const accessEn = {
   'confirm.acknowledge': 'I understand the risks and want to continue',
   'confirm.cancel': 'Cancel',
   'confirm.enable': 'Enable Full access',
+} satisfies Record<PermissionAccessKey, string>
+
+/** Brazilian Portuguese dictionary for the current-session permission gate. */
+export const accessPtBR = {
+  ...accessEn,
+  'preset.readOnly': 'Somente leitura',
+  'preset.workspaceWrite': 'Gravação no workspace',
+  'preset.fullAccess': 'Acesso total',
+  'confirm.title': 'Ativar acesso total?',
+  'confirm.acknowledge': 'Entendo os riscos e quero continuar',
+  'confirm.cancel': 'Cancelar',
+  'confirm.enable': 'Ativar acesso total',
 } satisfies Record<PermissionAccessKey, string>

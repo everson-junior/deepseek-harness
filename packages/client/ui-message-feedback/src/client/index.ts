@@ -49,7 +49,7 @@ export const inject = ['slots', 'remote', 'remote.messageFeedback', 'remote.sess
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-message-feedback: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'ui-message-feedback: dictionaries')
 
   const surfaces = new Map<SessionId, FeedbackSurface>()
   const surfaceFor = (sessionId: SessionId): FeedbackSurface => {

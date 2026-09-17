@@ -1,5 +1,5 @@
 ---
-description: "面向用户与插件作者的 web GUI 本地化说明：zh/en 偏好、浏览器派生回退、类型化命名空间字典与框架翻译席位。"
+description: "面向用户与插件作者的 web GUI 本地化说明：zh/en/pt-BR 偏好、浏览器派生回退、类型化命名空间字典与框架翻译席位。"
 kind: "package-reference"
 ---
 

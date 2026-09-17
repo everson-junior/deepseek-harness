@@ -43,7 +43,7 @@ export const inject = ['slots', 'locale', 'sidebarRightTabs', 'remote', 'remote.
 export function apply(ctx: ClientContext): void {
   const t = ctx.locale.bind(NS)
   ctx.effect(() => ctx.sidebarRightTabs.register(filesDefinition(t)), 'ui-sidebar-files: files type')
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar-files: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'ui-sidebar-files: dictionaries')
 
   const store = createFilesStore()
   const inject = filesFace(createList(ctx.remote))

@@ -36,7 +36,7 @@ export function apply(ctx: ClientContext): void {
   const controller = new SessionLogDownloadController()
   ctx.provide('sessionLogDownload', controller)
   ctx.effect(() => async () => { await controller.dispose() }, 'session-log-download: browser download lifecycle')
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'session-log-download: browser dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'session-log-download: browser dictionaries')
   ctx.on('command/executed', (sessionId, commandName, result) => {
     if (commandName === 'export' && result.kind === 'success') void controller.download(sessionId)
   })

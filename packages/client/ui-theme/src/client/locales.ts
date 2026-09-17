@@ -28,3 +28,16 @@ export const en = {
   'fontSize.increase': 'Increase font size',
   'fontSize.decrease': 'Decrease font size',
 } satisfies Record<ThemeKey, string>
+
+/** Brazilian Portuguese dictionary for appearance and font-size settings. */
+export const ptBR = {
+  ...en,
+  'appearance.title': 'Aparência',
+  'appearance.light': 'Claro',
+  'appearance.dark': 'Escuro',
+  'appearance.system': 'Sistema',
+  'fontSize.title': 'Tamanho da fonte',
+  'fontSize.description': 'Afeta apenas o conteúdo da conversa',
+  'fontSize.increase': 'Aumentar tamanho da fonte',
+  'fontSize.decrease': 'Diminuir tamanho da fonte',
+} satisfies Record<ThemeKey, string>

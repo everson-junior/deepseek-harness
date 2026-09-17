@@ -34,7 +34,7 @@ export const inject = ['sessions', 'slots', 'locale']
 export function apply(ctx: ClientContext): void {
   const controller = new OpenInAppController()
   void controller.load()
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'open-in-app: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'open-in-app: dictionaries')
   ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities',
     id: 'open-in-app',

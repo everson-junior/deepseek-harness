@@ -117,7 +117,7 @@ export function apply(ctx: ClientContext): void {
     void disposeRegistry()
   }, 'ui-sidebar-right: service faces')
 
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-sidebar-right: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'ui-sidebar-right: dictionaries')
 
   ctx.effect(() => {
     const handle = createSidebarRightStore(() => defaultSeed(tabs))

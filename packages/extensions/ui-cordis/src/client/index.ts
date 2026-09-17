@@ -41,7 +41,7 @@ export const inject = [
 
 /** Mount every Cordis browser surface over the shared Host inventory. */
 export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-cordis: dictionaries')
+  ctx.effect(() => ctx.locale.register(NS, { zh, en, 'pt-BR': en }), 'ui-cordis: dictionaries')
 
   const port: CordisDynamicPort = {
     stop: async (sessionId, pluginId) => {
