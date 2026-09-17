@@ -39,6 +39,12 @@ Each profile may set a `retryPolicy`; omission uses normal mode with five retrie
 - name: '@deepseek-ai/dsh-llm-pi-ai'
   config:
     providers:
+      lynn:
+        baseURL: https://proxy.dta.totvs.ai
+      omniroute:
+        baseURL: http://localhost:3001/v1
+      eversync:
+        baseURL: http://localhost:20128/v1
       openai:
         apiKeyEnv: OPENAI_API_KEY
         baseURL: https://proxy.example.com:8443
@@ -94,7 +100,7 @@ A provider pi-ai ships a login for can be signed into through the harness author
 
 ### Resolve the model catalog
 
-A profile's `models` list replaces the route's installed catalog rather than extending it; each entry defaults its unset fields from the installed model of the same id, so narrowing a route to two models, correcting one capacity, or adding a model newer than the installed catalog are one-line edits. `modelOverrides` reshapes individual installed-catalog models without that cost — correct one model, keep the other thirty-seven — and is refused when set beside a `models` list, on a hand-declared route, or naming a model the catalog does not describe, because a silently unchanged model would be a typo someone hunts for later.
+The official `lynn`, `omniroute`, and `eversync` providers query their configured OpenAI-compatible endpoints at `https://proxy.dta.totvs.ai/v1/models`, `http://localhost:3001/v1/models`, and `http://localhost:20128/v1/models`. The Models page can adopt the listed models and their reported input and output capacities; the shipped profiles enable text and image input for those adopted models. A profile's `models` list replaces the route's installed catalog rather than extending it; each entry defaults its unset fields from the installed model of the same id, so narrowing a route to two models, correcting one capacity, or adding a model newer than the installed catalog are one-line edits. `modelOverrides` reshapes individual installed-catalog models without that cost — correct one model, keep the other thirty-seven — and is refused when set beside a `models` list, on a hand-declared route, or naming a model the catalog does not describe, because a silently unchanged model would be a typo someone hunts for later.
 
 ### Run with reasoning and wire compatibility
 

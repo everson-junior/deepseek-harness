@@ -25,7 +25,7 @@
 import { INVALID_CREDENTIAL_CODE, LlmError, normalizeApiKey } from '@deepseek-ai/dsh-llm'
 import type { LlmDiscoveredModel, LlmModelDiscoveryOperation } from '@deepseek-ai/dsh-llm'
 import { attributionHeaders } from '@deepseek-ai/dsh-llm'
-import { catalogModels } from './catalog.ts'
+import { catalogModels, usesRemoteModelCatalog } from './catalog.ts'
 
 /**
  * Protocols whose model listing this module can read. OpenAI protocols use
@@ -272,7 +272,7 @@ export async function discoverModels(
 ): Promise<readonly LlmDiscoveredModel[]> {
   // A catalog route already has its answer, and a better one: the installed
   // entries carry context windows and output caps no listing endpoint reports.
-  if (request.provider !== undefined) {
+  if (request.provider !== undefined && !usesRemoteModelCatalog(request.provider)) {
     const installed = catalogModels(request.provider)
     if (installed.size > 0) {
       return [...installed.values()].map(model => ({

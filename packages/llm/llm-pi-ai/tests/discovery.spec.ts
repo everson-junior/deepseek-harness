@@ -93,6 +93,51 @@ describe('catalog-route model discovery', () => {
     await expect(ctx.llm.discoverModels('llm-pi-ai', { provider: 'deepseek' })).resolves.not.toHaveLength(0)
   })
 
+  it('discovers Lynn models from its OpenAI-compatible proxy', async () => {
+    const server = await listingServer({
+      body: JSON.stringify({
+        data: [
+          { id: 'gpt-5.6-luna', max_input_tokens: 922_000, max_output_tokens: 128_000 },
+          { id: 'gpt-5.6-sol', max_input_tokens: 922_000, max_output_tokens: 128_000 },
+          { id: 'gpt-5.6-terra', max_input_tokens: 922_000, max_output_tokens: 128_000 },
+        ],
+      }),
+    })
+    const ctx = await harness()
+
+    await expect(ctx.llm.discoverModels('llm-pi-ai', {
+      provider: 'lynn',
+      baseURL: `${server.url}/v1`,
+      apiKey: 'lynn-key',
+    })).resolves.toEqual([
+      { id: 'gpt-5.6-luna', name: 'gpt-5.6-luna', contextWindow: 922_000, maxTokens: 128_000 },
+      { id: 'gpt-5.6-sol', name: 'gpt-5.6-sol', contextWindow: 922_000, maxTokens: 128_000 },
+      { id: 'gpt-5.6-terra', name: 'gpt-5.6-terra', contextWindow: 922_000, maxTokens: 128_000 },
+    ])
+    expect(server.paths).toEqual(['/v1/models'])
+    expect(server.headers[0]?.authorization).toBe('Bearer lynn-key')
+  })
+
+  it.each([
+    ['omniroute', 'omniroute-key'],
+    ['eversync', 'eversync-key'],
+  ])('discovers %s models from its OpenAI-compatible endpoint', async (provider, apiKey) => {
+    const server = await listingServer({
+      body: JSON.stringify({ data: [{ id: `${provider}-model`, max_input_tokens: 131_072, max_output_tokens: 16_384 }] }),
+    })
+    const ctx = await harness()
+
+    await expect(ctx.llm.discoverModels('llm-pi-ai', {
+      provider,
+      baseURL: `${server.url}/v1`,
+      apiKey,
+    })).resolves.toEqual([
+      { id: `${provider}-model`, name: `${provider}-model`, contextWindow: 131_072, maxTokens: 16_384 },
+    ])
+    expect(server.paths).toEqual(['/v1/models'])
+    expect(server.headers[0]?.authorization).toBe(`Bearer ${apiKey}`)
+  })
+
   it('says where a route the catalog does not describe must get its models', async () => {
     const ctx = await harness()
     await expect(ctx.llm.discoverModels('llm-pi-ai', { provider: 'acme-gateway' }))

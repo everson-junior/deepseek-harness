@@ -75,6 +75,59 @@ async function harness(config: LlmPiAi.Config): Promise<Context> {
 }
 
 describe('hand-declared providers', () => {
+  it('serves discovered Lynn models through its OpenAI-compatible proxy', () => {
+    const resolved = resolveProfiles({
+      lynn: {
+        api: 'openai-completions',
+        baseURL: 'https://proxy.dta.totvs.ai',
+        defaultInput: ['text', 'image'],
+        models: [{ id: 'gpt-5.6-luna', contextWindow: 922_000, maxTokens: 128_000 }],
+      },
+    })
+    const lynn = resolved.get('lynn')
+    const models = lynn?.piProvider?.getModels()
+
+    expect(lynn?.piProvider?.id).toBe('lynn')
+    expect(lynn?.piProvider?.baseUrl).toBe('https://proxy.dta.totvs.ai')
+    expect(models).toEqual([expect.objectContaining({
+      id: 'gpt-5.6-luna',
+      provider: 'lynn',
+      api: 'openai-completions',
+      baseUrl: 'https://proxy.dta.totvs.ai',
+      input: ['text', 'image'],
+      contextWindow: 922_000,
+      maxTokens: 128_000,
+    })])
+  })
+
+  it.each([
+    ['omniroute', 'OmniRoute', 'http://localhost:3001/v1'],
+    ['eversync', 'EverSync', 'http://localhost:20128/v1'],
+  ])('serves discovered %s models through its OpenAI-compatible endpoint', (provider, _displayName, baseURL) => {
+    const resolved = resolveProfiles({
+      [provider]: {
+        api: 'openai-completions',
+        baseURL,
+        defaultInput: ['text', 'image'],
+        models: [{ id: `${provider}-model`, contextWindow: 131_072, maxTokens: 16_384 }],
+      },
+    })
+    const route = resolved.get(provider)
+    const models = route?.piProvider?.getModels()
+
+    expect(route?.piProvider?.id).toBe(provider)
+    expect(route?.piProvider?.baseUrl).toBe(baseURL)
+    expect(models).toEqual([expect.objectContaining({
+      id: `${provider}-model`,
+      provider,
+      api: 'openai-completions',
+      baseUrl: baseURL,
+      input: ['text', 'image'],
+      contextWindow: 131_072,
+      maxTokens: 16_384,
+    })])
+  })
+
   it('serves a route pi-ai has never heard of from its own declaration', async () => {
     const server = await mockServer([{ events: textEvents }])
     const ctx = await harness(gateway(`${server.url}/v1`))
@@ -1224,6 +1277,7 @@ describe('configurable-provider directory', () => {
     expect(offered).toContain('openai-codex')
     expect(offered).toContain('anthropic')
     expect(offered).toContain('openai')
+    expect(offered).toContain('lynn')
   })
 
   it('lists a route a stored profile names as a catalog route, not a declared one', async () => {
@@ -1236,6 +1290,18 @@ describe('configurable-provider directory', () => {
       displayName: 'openai-codex',
       settingsNs: 'llm-pi-ai',
       settingsPath: ['providers', 'openai-codex'],
+      declared: false,
+    })
+  })
+
+  it('lists Lynn as an official catalog provider without a stored profile', async () => {
+    const ctx = await harness({})
+
+    expect(ctx.llm.listConfigurableProviders()).toContainEqual({
+      provider: 'lynn',
+      displayName: 'lynn',
+      settingsNs: 'llm-pi-ai',
+      settingsPath: ['providers', 'lynn'],
       declared: false,
     })
   })

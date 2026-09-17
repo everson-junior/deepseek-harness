@@ -12,7 +12,7 @@ import type { AuthEvent, AuthPrompt, AuthType, Provider } from '@earendil-works/
 import type { Context } from '@deepseek-ai/cordis'
 import type { AuthorizationMethod, AuthorizationPrompt, AuthorizationSession } from '@deepseek-ai/dsh-authorization'
 import { isCredentialKeySegment } from '@deepseek-ai/dsh-credentials'
-import { catalogProvider, catalogProviderIds } from './catalog.ts'
+import { catalogProvider, catalogProviderIds, isOfficialCatalogAlias } from './catalog.ts'
 import { recordKeyFor } from './auth.ts'
 import type { PiAiAuthInjection } from './adapter.ts'
 
@@ -118,7 +118,7 @@ function restate(prompt: AuthPrompt): AuthorizationPrompt {
  * @param auth - the injectables every collection here is built with.
  */
 export function registerPiAiFlows(ctx: Context, auth: PiAiAuthInjection): void {
-  for (const providerId of catalogProviderIds()) {
+  for (const providerId of catalogProviderIds().filter(providerId => !isOfficialCatalogAlias(providerId))) {
     const provider = catalogProvider(providerId)
     const [first, ...rest] = loginMethods(provider)
     /* v8 ignore next 3 -- every id here names an installed provider and every

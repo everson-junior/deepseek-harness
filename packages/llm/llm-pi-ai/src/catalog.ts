@@ -164,6 +164,25 @@ export const CHAT_TEMPLATE_VARS = Object.keys(CHAT_TEMPLATE_VAR_GATE) as readonl
 
 let providerIndex: Map<string, Provider> | undefined
 
+const OFFICIAL_CATALOG_ALIASES: Readonly<Record<string, string>> = {
+  eversync: 'github-copilot',
+  lynn: 'github-copilot',
+  omniroute: 'github-copilot',
+}
+
+/** Official routes whose available models are listed by their configured endpoint. */
+const REMOTE_MODEL_CATALOGS: ReadonlySet<string> = new Set(['eversync', 'lynn', 'omniroute'])
+
+/** Whether one provider id is an official local alias rather than an installed pi-ai route. */
+export function isOfficialCatalogAlias(provider: string): boolean {
+  return provider in OFFICIAL_CATALOG_ALIASES
+}
+
+/** Whether one official route resolves its models from its endpoint rather than pi-ai's installed catalog. */
+export function usesRemoteModelCatalog(provider: string): boolean {
+  return REMOTE_MODEL_CATALOGS.has(provider)
+}
+
 /**
  * Installed catalog providers by id, constructed once. Each entry owns the API
  * implementations for its own models, which is why a catalog route reuses this
@@ -181,7 +200,7 @@ function catalogProviders(): Map<string, Provider> {
  * @returns the catalog provider, or `undefined` for a route pi-ai does not ship.
  */
 export function catalogProvider(provider: string): Provider | undefined {
-  return catalogProviders().get(provider)
+  return catalogProviders().get(OFFICIAL_CATALOG_ALIASES[provider] ?? provider)
 }
 
 /**
@@ -189,7 +208,7 @@ export function catalogProvider(provider: string): Provider | undefined {
  * @returns the catalog provider ids.
  */
 export function catalogProviderIds(): readonly string[] {
-  return getBuiltinProviders()
+  return [...getBuiltinProviders(), ...Object.keys(OFFICIAL_CATALOG_ALIASES)]
 }
 
 /**
@@ -198,8 +217,9 @@ export function catalogProviderIds(): readonly string[] {
  * @returns catalog models by id; empty for a route pi-ai does not ship.
  */
 export function catalogModels(provider: string): Map<string, Model<Api>> {
-  if (!catalogProviders().has(provider)) return new Map()
-  const models = getBuiltinModels(provider as BuiltinProvider) as Model<Api>[]
+  const sourceProvider = OFFICIAL_CATALOG_ALIASES[provider] ?? provider
+  if (!catalogProviders().has(sourceProvider)) return new Map()
+  const models = getBuiltinModels(sourceProvider as BuiltinProvider) as Model<Api>[]
   return new Map(models.map(model => [model.id, model]))
 }
 
@@ -622,6 +642,8 @@ export type PiAiModelOverride = Omit<PiAiModelProfile, 'id'>
 export interface RouteCatalogRequest {
   /** Provider route key, stamped onto every materialized model. */
   provider: string
+  /** Installed pi-ai provider supplying this route's model, protocol, and endpoint defaults. */
+  catalogProvider?: string
   /** Wire protocol override; absent defers to each catalog model's own API. */
   api?: string
   /** Endpoint override; absent defers to the catalog model, then the catalog provider. */
@@ -830,8 +852,9 @@ export function resolveRouteModels(
   validation: 'strict' | 'deferred' = 'strict',
 ): RouteCatalog {
   const { provider } = request
-  const defaults = catalogModels(provider)
-  const providerBaseUrl = catalogProvider(provider)?.baseUrl
+  const sourceProvider = request.catalogProvider ?? provider
+  const defaults = catalogModels(sourceProvider)
+  const providerBaseUrl = catalogProvider(sourceProvider)?.baseUrl
   // An absent `models` key and an empty one are the same request: the config
   // schema materializes `[]` for the absent case, and an empty catalog could
   // serve no request anyway, so both mean "serve the installed catalog".

@@ -39,6 +39,12 @@ kind: "package-reference"
 - name: '@deepseek-ai/dsh-llm-pi-ai'
   config:
     providers:
+      lynn:
+        baseURL: https://proxy.dta.totvs.ai
+      omniroute:
+        baseURL: http://localhost:3001/v1
+      eversync:
+        baseURL: http://localhost:20128/v1
       openai:
         apiKeyEnv: OPENAI_API_KEY
         baseURL: https://proxy.example.com:8443
@@ -94,7 +100,7 @@ pi-ai 提供登录的提供方可以通过 harness 授权 seam 登录：流程�
 
 ### 解析模型目录
 
-profile 的 `models` 列表会替换而非扩展路由的已安装目录；每个条目从同 id 已安装模型取未设置字段的默认值，因此把路由收窄到两个模型、修正一个容量或添加比已安装目录更新的模型都是一行编辑。`modelOverrides` 无需该代价即可重塑个别已安装目录模型——修正一个模型，保留其余三十七个——当它与 `models` 列表并存、位于手工声明路由上、或点名目录未描述的模型时会被拒绝，因为静默不变的模型会成为别人日后寻找的拼写错误。
+官方 `lynn`、`omniroute` 与 `eversync` 提供方通过各自配置的 OpenAI 兼容端点查询 `https://proxy.dta.totvs.ai/v1/models`、`http://localhost:3001/v1/models` 与 `http://localhost:20128/v1/models`。Models 页面可以采用列出的模型及其报告的输入和输出容量；随附 profile 为这些采用的模型启用文本和图像输入。profile 的 `models` 列表会替换而非扩展路由的已安装目录；每个条目从同 id 已安装模型取未设置字段的默认值，因此把路由收窄到两个模型、修正一个容量或添加比已安装目录更新的模型都是一行编辑。`modelOverrides` 无需该代价即可重塑个别已安装目录模型——修正一个模型，保留其余三十七个——当它与 `models` 列表并存、位于手工声明路由上、或点名目录未描述的模型时会被拒绝，因为静默不变的模型会成为别人日后寻找的拼写错误。
 
 ### 带推理（reasoning）与协议兼容运行
 

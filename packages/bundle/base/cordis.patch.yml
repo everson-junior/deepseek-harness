@@ -97,15 +97,30 @@
     - id: credentials
       name: '@deepseek-ai/dsh-credentials-local'
 
-    # The pi-ai multi-provider twin, mounted dormant: zero routes (and no extra
-    # models in the picker) until a `llm-pi-ai:` settings section supplies provider
-    # profiles — then those routes register live, keys resolving per request
-    # through their apiKeyEnv references, and drop again when the section empties.
-    # Supplying those profiles is exactly what the web Models page does. Which
-    # adapters exist is composition; which providers run is the user's settings
-    # document.
+    # The pi-ai multi-provider adapter serves the official OpenAI-compatible
+    # proxy routes below. A user `llm-pi-ai:` settings section may add routes or
+    # override these routes live; keys resolve per request through their apiKeyEnv
+    # references. Which adapters exist is composition; which providers run is
+    # otherwise the user's settings document.
     - id: llm-pi-ai
       name: '@deepseek-ai/dsh-llm-pi-ai'
+      config:
+        providers:
+          eversync:
+            displayName: EverSync
+            api: openai-completions
+            baseURL: http://localhost:20128/v1
+            defaultInput: [text, image]
+          lynn:
+            displayName: Lynn
+            api: openai-completions
+            baseURL: https://proxy.dta.totvs.ai
+            defaultInput: [text, image]
+          omniroute:
+            displayName: OmniRoute
+            api: openai-completions
+            baseURL: http://localhost:3001/v1
+            defaultInput: [text, image]
 
     - id: session-persistence-jsonl
       name: '@deepseek-ai/dsh-session-persistence-jsonl'

@@ -89,6 +89,8 @@ export type {
 
 /** Configuration for one pi-ai provider route; the `providers` dict key IS the route. */
 export interface PiAiProviderProfile {
+  /** Installed pi-ai provider whose protocol, model catalog, and native implementation this route reuses. */
+  catalogProvider?: string
   /** Credential reference (environment-variable name) resolved per request through `ctx.credentials`. */
   apiKeyEnv?: string
   /** Name shown by configuration surfaces; defaults to the route key. */
@@ -320,6 +322,7 @@ const modelProfile: z<PiAiModelProfile> = z.object({
 const modelOverride: z<PiAiModelOverride> = z.object(modelFields)
 
 const profile = z.object({
+  catalogProvider: z.string(),
   apiKeyEnv: z.string().role('credential-ref'),
   displayName: z.string(),
   api: z.union(supportedProtocols()),
@@ -455,12 +458,14 @@ export function resolveProfiles(
     // always shown route keys, and a catalog route must not silently rename
     // itself on every configuration surface just because it gained a profile.
     const displayName = source.displayName ?? provider
+    const catalogProvider = source.catalogProvider ?? provider
     let catalog: RouteCatalog | undefined
     let piProvider: Provider | undefined
     let catalogError: string | undefined
     try {
       catalog = resolveRouteModels({
         provider,
+        catalogProvider,
         ...source.api === undefined ? {} : { api: source.api },
         ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
         ...source.models === undefined ? {} : { models: source.models },
@@ -473,6 +478,7 @@ export function resolveProfiles(
       catalogError = catalog.modelErrors.values().next().value
       piProvider = buildProvider({
         provider,
+        catalogProvider,
         displayName,
         ...source.api === undefined ? {} : { api: source.api },
         ...source.baseURL === undefined ? {} : { baseURL: source.baseURL },
