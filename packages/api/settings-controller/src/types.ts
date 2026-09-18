@@ -37,3 +37,5 @@ export interface SettingsDocumentOpenValue {
 export type AgentPresetDirectoryOpenValue =
   | { readonly opened: true }
   | { readonly opened: false; readonly path: string }
+
+export type { AuthorizationBeginRequest, AuthorizationFrame } from './authorization.ts'

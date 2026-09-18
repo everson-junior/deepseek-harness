@@ -71,6 +71,10 @@ export interface ModelsOperations {
    * @returns the candidates, or the refusal.
    */
   discoverModels(settingsNs: string, request: LlmModelDiscoveryRequest): Promise<ModelDiscoveryOutcome>
+  /** Start one provider OAuth/device-flow attempt and report public notices. */
+  authorizeProvider(provider: string, onNotice: (message: string, url?: string, code?: string) => void): Promise<string | undefined>
+  /** Cancel one provider authorization attempt. */
+  cancelAuthorization(provider: string): Promise<void>
 }
 
 /**
@@ -104,6 +108,28 @@ export function createModelsOperations(ctx: ClientContext): ModelsOperations {
       return response.ok
         ? { kind: 'found', models: response.value }
         : { kind: 'refused', message: response.error.message }
+    },
+    authorizeProvider: async (provider, onNotice) => {
+      for await (const frame of ctx.remote.authorization.begin({ key: `llm-pi-ai/${provider}`, method: 'oauth' })) {
+        if (frame.type === 'notice') {
+          onNotice(frame.notice.message, frame.notice.url, frame.notice.code)
+          if (frame.notice.url !== undefined && typeof window !== 'undefined') {
+            if (window.parent !== window) window.parent.postMessage({ type: 'dsh/open-external', url: frame.notice.url }, '*')
+            else {
+              const popup = window.open(frame.notice.url, '_blank', 'noopener,noreferrer')
+              if (popup === null) onNotice('The verification page was blocked by the browser. Use the link shown below.', frame.notice.url, frame.notice.code)
+            }
+          }
+        } else if (frame.type === 'prompt') {
+          const answer = frame.prompt.kind === 'select' ? frame.prompt.options[0]?.id ?? '' : ''
+          await ctx.remote.authorization.answer(frame.attemptId, frame.promptId, answer)
+        } else if (frame.type === 'error') return frame.message
+        else if (frame.type === 'result' && frame.status !== 'authorized') return 'Authorization cancelled.'
+      }
+      return undefined
+    },
+    cancelAuthorization: async (provider) => {
+      await ctx.remote.authorization.cancel(`llm-pi-ai/${provider}`)
     },
   }
 }

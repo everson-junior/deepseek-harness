@@ -140,6 +140,7 @@ export function registerPiAiFlows(ctx: Context, auth: PiAiAuthInjection): void {
       label: provider.name,
       methods: [first, ...rest],
       async run(session) {
+        ctx.logger.info('llm-pi-ai: starting OAuth login for provider "%s"', providerId)
         // A collection of its own, holding only the provider being signed
         // into: login is not serving requests, and the credential it produces
         // lands in the shared store either way.
@@ -152,7 +153,7 @@ export function registerPiAiFlows(ctx: Context, auth: PiAiAuthInjection): void {
         // is what makes it the single writer of this record.
         await models.login(providerId, type, {
           signal: session.signal,
-          notify: (event) => { relay(event, session) },
+          notify: (event) => { ctx.logger.info('llm-pi-ai: OAuth event for "%s": %s', providerId, event.type); relay(event, session) },
           prompt: prompt => session.prompt(restate(prompt)),
         })
       },

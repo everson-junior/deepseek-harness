@@ -32,7 +32,15 @@ function getHtmlForStatus(info: HarnessInfo): string {
   </style>
 </head>
 <body>
-  <iframe src="${info.url}" allow="clipboard-read; clipboard-write"></iframe>
+  <iframe src="${info.url}" allow="clipboard-read; clipboard-write" sandbox="allow-forms allow-modals allow-popups allow-scripts allow-same-origin"></iframe>
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (data?.type === 'dsh/open-external' && typeof data.url === 'string') vscode.postMessage({ command: 'openExternal', text: data.url });
+      if (data?.type === 'dsh/copy' && typeof data.text === 'string') vscode.postMessage({ command: 'copy', text: data.text });
+    });
+  </script>
 </body>
 </html>`
   }
@@ -470,6 +478,9 @@ export class DeepSeekHarnessViewProvider implements vscode.WebviewViewProvider {
         case 'openSettings':
           vscode.commands.executeCommand('deepseek.openSettings')
           break
+        case 'openExternal':
+          if (data.text) await vscode.env.openExternal(vscode.Uri.parse(data.text))
+          break
         case 'showLogs':
           vscode.commands.executeCommand('deepseek.showLogs')
           break
@@ -531,6 +542,9 @@ export function openHarnessInEditorTab(
         break
       case 'openSettings':
         vscode.commands.executeCommand('deepseek.openSettings')
+        break
+      case 'openExternal':
+        if (data.text) await vscode.env.openExternal(vscode.Uri.parse(data.text))
         break
       case 'showLogs':
         vscode.commands.executeCommand('deepseek.showLogs')

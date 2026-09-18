@@ -165,6 +165,12 @@ async function stopProcessOnPort(
  */
 function resolveEnhancedEnv(userConfig: ExtensionConfig): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env }
+  // VSCode launches the extension host outside the integrated terminal, so
+  // terminal.integrated.env.windows does not reach the DSH child process.
+  // Corporate TLS interception requires Node to trust the Windows system store.
+  if (process.platform === 'win32' && !env.NODE_EXTRA_CA_CERTS?.trim()) {
+    env.NODE_OPTIONS = [env.NODE_OPTIONS, '--use-system-ca'].filter(Boolean).join(' ')
+  }
 
   if (userConfig.apiKey) {
     env.DEEPSEEK_API_KEY = userConfig.apiKey

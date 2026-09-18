@@ -17,7 +17,12 @@ export async function writeClipboard(text: string): Promise<boolean> {
       await navigator.clipboard.writeText(text)
       return true
     } catch {
-      // Denied permissions / iframe policy — do not claim success.
+      // VSCode embeds the Web UI in a loopback iframe. Its outer Webview owns
+      // the native clipboard and receives this message through the iframe bridge.
+      if (typeof window !== 'undefined' && window.parent !== window) {
+        window.parent.postMessage({ type: 'dsh/copy', text }, '*')
+        return true
+      }
       return false
     }
   }

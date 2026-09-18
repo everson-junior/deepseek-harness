@@ -208,7 +208,7 @@ export function catalogProvider(provider: string): Provider | undefined {
  * @returns the catalog provider ids.
  */
 export function catalogProviderIds(): readonly string[] {
-  return [...getBuiltinProviders(), ...Object.keys(OFFICIAL_CATALOG_ALIASES)]
+  return [...new Set([...getBuiltinProviders(), ...Object.keys(OFFICIAL_CATALOG_ALIASES), 'github-copilot'])]
 }
 
 /**

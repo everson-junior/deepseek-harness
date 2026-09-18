@@ -162,6 +162,8 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
   const [keyState, setKeyState] = useState<CredentialInfo | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | undefined>(undefined)
+  const [copilotBusy, setCopilotBusy] = useState(false)
+  const [copilotNotice, setCopilotNotice] = useState<{ message: string; url?: string; code?: string } | undefined>(undefined)
   // A settings success advances both retry baselines immediately. Keeping the
   // derived fields in the draft prevents a pushed namespace refresh from
   // turning them into deletions when the following credential write is retried.
@@ -360,6 +362,44 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     }
     return (
       <>
+        {props.provider === 'github-copilot'
+          ? (
+            <div className={styles['field']}>
+              <button type="button" className={styles['secondaryButton']} disabled={disabled || copilotBusy} onClick={() => {
+                setCopilotBusy(true)
+                setCopilotNotice(undefined)
+                void operations.authorizeProvider(
+                  props.provider,
+                  (message, url, code) => {
+                    setCopilotNotice({
+                      message,
+                      ...url === undefined ? {} : { url },
+                      ...code === undefined ? {} : { code },
+                    })
+                  },
+                )
+                  .then((error) => { if (error !== undefined) setFailure(error) })
+                  .catch((error) => { setFailure(error instanceof Error ? error.message : String(error)) })
+                  .finally(() => { setCopilotBusy(false) })
+              }}>
+                {copilotBusy ? t('copilotSigningIn') : t('copilotSignIn')}
+              </button>
+              <button type="button" className={styles['secondaryButton']} onClick={() => {
+                void operations.cancelAuthorization(props.provider)
+                setCopilotBusy(false)
+              }}>{t('cancel')}</button>
+              {copilotNotice === undefined ? null : <p className={styles['advancedHint']}>
+                {copilotNotice.message}{copilotNotice.code === undefined ? '' : ` (${copilotNotice.code})`}
+                {copilotNotice.url === undefined ? null : <button type="button" className={styles['secondaryButton']} onClick={() => {
+                  const url = copilotNotice.url
+                  if (url === undefined) return
+                  if (window.parent !== window) window.parent.postMessage({ type: 'dsh/open-external', url }, '*')
+                  else window.location.assign(url)
+                }}>{t('copilotOpenUrl')}</button>}
+              </p>}
+            </div>
+          )
+          : null}
         <div className={styles['field']}>
           <span className={styles['fieldLabel']}>{t('keyInput')}</span>
           <input

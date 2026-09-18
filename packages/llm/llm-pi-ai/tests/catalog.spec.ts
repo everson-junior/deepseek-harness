@@ -79,7 +79,7 @@ describe('hand-declared providers', () => {
     const resolved = resolveProfiles({
       lynn: {
         api: 'openai-completions',
-        baseURL: 'https://proxy.dta.totvs.ai',
+        baseURL: 'https://proxy.dta.totvs.ai/v1',
         defaultInput: ['text', 'image'],
         models: [{ id: 'gpt-5.6-luna', contextWindow: 922_000, maxTokens: 128_000 }],
       },
@@ -88,12 +88,12 @@ describe('hand-declared providers', () => {
     const models = lynn?.piProvider?.getModels()
 
     expect(lynn?.piProvider?.id).toBe('lynn')
-    expect(lynn?.piProvider?.baseUrl).toBe('https://proxy.dta.totvs.ai')
+    expect(lynn?.piProvider?.baseUrl).toBe('https://proxy.dta.totvs.ai/v1')
     expect(models).toEqual([expect.objectContaining({
       id: 'gpt-5.6-luna',
       provider: 'lynn',
       api: 'openai-completions',
-      baseUrl: 'https://proxy.dta.totvs.ai',
+      baseUrl: 'https://proxy.dta.totvs.ai/v1',
       input: ['text', 'image'],
       contextWindow: 922_000,
       maxTokens: 128_000,

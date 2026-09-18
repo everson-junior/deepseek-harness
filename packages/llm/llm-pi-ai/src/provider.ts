@@ -147,6 +147,7 @@ function reuseCatalogProvider(base: Provider, spec: ProviderSpec): Provider {
   // Provider-level `baseUrl` is display metadata: pi-ai routes every request
   // through `Model.baseUrl`, which model resolution has already overridden.
   const baseUrl = spec.baseURL ?? base.baseUrl
+  const filterModels = base.filterModels
   return {
     id: spec.provider,
     name: spec.displayName,
@@ -157,6 +158,7 @@ function reuseCatalogProvider(base: Provider, spec: ProviderSpec): Provider {
     // an implementation holding state on itself keeps working.
     stream: (model, context, options) => base.stream(model, context, options),
     streamSimple: (model, context, options) => base.streamSimple(model, context, options),
+    ...filterModels === undefined ? {} : { filterModels: (models, credential) => filterModels(models, credential) },
   }
 }
 

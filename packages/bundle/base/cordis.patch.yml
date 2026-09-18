@@ -97,6 +97,10 @@
     - id: credentials
       name: '@deepseek-ai/dsh-credentials-local'
 
+    # Provider login flows use the shared credential store and expose OAuth/device authorization.
+    - id: authorization
+      name: '@deepseek-ai/dsh-authorization'
+
     # The pi-ai multi-provider adapter serves the official OpenAI-compatible
     # proxy routes below. A user `llm-pi-ai:` settings section may add routes or
     # override these routes live; keys resolve per request through their apiKeyEnv
